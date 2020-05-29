@@ -14,26 +14,47 @@ class SinglePost extends Component {
 
   componentDidMount() {
     const postId = this.props.match.params.postId;
-    console.log('resData---->',postId)
-    fetch('http://localhost:8090/feeds/'+postId,{
+    const graphql =  {
+      query:`
+        {
+          viewPost(id:"${postId}")
+          {
+              id,
+             title,
+             content,
+              creator,
+              createdAt,
+              imageUrl
+            }
+         }
+      `
+    }
+    fetch('http://localhost:8090/graphql',{
+      method:'POST',
       headers:{
-        Authorization:'Bearer: '+this.props.token
-      }
+        Authorization:'Bearer: '+this.props.token,
+        'Content-Type':'application/json'
+      },
+      body:JSON.stringify(graphql)
     })
-      .then(res => {
-        if (res.status !== 200) {
-          throw new Error('Failed to fetch status');
-        }
-        return res.json();
-      })
-      .then(resData => {
-        console.log('resData---->',resData)
+    .then(res => {
+       
+      return res.json();
+    })
+    .then(resData => {
+      if (resData.errors && resData.errors[0].status === 422) {
+        throw new Error('Validation failed.');
+      }
+      if (resData.errors) {
+        console.log('Error!');
+        throw new Error('Could not authenticate you!');
+      }
         this.setState({
-          title: resData.post.title,
-          author: resData.post.author,
-          date: new Date(resData.post.createdAt).toLocaleDateString('en-US'),
-          content: resData.post.content,
-          image:'http://localhost:8090/images/'+resData.post.imageUrl
+          title: resData.data.viewPost.title,
+          author: resData.data.viewPost.author,
+          date: new Date(resData.data.viewPost.createdAt).toLocaleDateString('en-US'),
+          content: resData.data.viewPost.content,
+          image:'http://localhost:8090/images/'+resData.data.viewPost.imageUrl
         });
       })
       .catch(err => {
